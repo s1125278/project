@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Drawing Recognizer - 主題塗鴉辨識遊戲</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- TensorFlow.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+    <!-- Canvas Confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #020617; /* Slate 950 */
+            color: #f8fafc; /* Slate 50 */
+        }
+        .header-font {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+        .draw-shadow {
+            box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.15), 0 0 15px -5px rgba(139, 92, 246, 0.1);
+        }
+        /* Custom scrollbar for predictions */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.3);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 2px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(148, 163, 184, 0.4);
+        }
+        /* Pixelated canvas preview scale styling */
+        .pixelated-render {
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-cyan-500/30 selection:text-cyan-200">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 bg-slate-950/95 z-50 flex flex-col items-center justify-center p-4 transition-all duration-300">
+        <div class="relative mb-6">
+            <div class="h-16 w-16 rounded-full border-4 border-slate-800 border-t-cyan-500 animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center text-cyan-400 font-bold header-font">AI</div>
+        </div>
+        <div id="loading-text" class="text-center">
+            <p class="text-lg font-medium text-slate-100 mb-1">正在載入自定義神經網絡模型...</p>
+            <p class="text-sm text-slate-400 font-mono">Loading model.json & weights...</p>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <main class="flex-grow w-full max-w-7xl mx-auto px-4 py-6 md:py-8 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
+        
+        <!-- Left Side: Drawing area and Game controls -->
+        <div class="lg:col-span-7 flex flex-col justify-between space-y-4">
+            
+            <!-- Branding Header -->
+            <div class="flex items-center justify-between border-b border-slate-900 pb-4">
+                <div>
+                    <h1 class="text-2xl font-bold header-font text-white flex items-center gap-2">
+                        <i class="fa-solid fa-wand-magic-sparkles text-cyan-400 animate-pulse"></i>
+                        <span>AI Doodle Panel</span>
+                        <span class="text-xs bg-cyan-950 text-cyan-400 font-mono px-2 py-0.5 rounded-full border border-cyan-800/50">Custom Model v1.0</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">基於自定義 TensorFlow.js 卷積神經網絡的即時塗鴉識別面板</p>
+                </div>
+            </div>
+
+            <!-- Mode & Score Header -->
+            <div class="bg-slate-900/40 p-3 rounded-xl border border-slate-800/80 flex flex-wrap gap-4 items-center justify-between">
+                <div class="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-lg border border-slate-900">
+                    <button id="mode-sandbox" onclick="setGameMode('sandbox')" class="px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all duration-200 bg-slate-800 text-slate-200">
+                        <i class="fa-solid fa-compass mr-1.5"></i>沙盒自由繪圖
+                    </button>
+                    <button id="mode-challenge" onclick="setGameMode('challenge')" class="px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all duration-200 text-slate-400 hover:text-slate-200">
+                        <i class="fa-solid fa-trophy mr-1.5 text-amber-500"></i>關卡挑戰模式
+                    </button>
+                </div>
+
+                <!-- Stats Dashboard (Shared but switches look inside challenge mode) -->
+                <div class="flex items-center gap-4 text-xs">
+                    <div id="challenge-prompt-wrapper" class="hidden flex items-center gap-1.5 text-slate-300">
+                        <span class="text-slate-500">請畫出：</span>
+                        <span id="target-emoji" class="text-lg">🍎</span>
+                        <span id="target-chinese" class="font-bold text-cyan-400 text-sm">蘋果</span>
+                        <span id="target-english" class="font-mono text-[10px] text-slate-500">(apple)</span>
+                    </div>
+
+                    <div id="stats-timer-wrapper" class="hidden flex items-center gap-1.5 bg-slate-950/80 px-2.5 py-1.5 rounded-lg border border-slate-900">
+                        <span class="text-slate-400"><i class="fa-solid fa-clock text-rose-500 animate-pulse"></i></span>
+                        <span id="game-timer" class="font-mono font-bold text-sm text-slate-200">45</span>秒
+                    </div>
+
+                    <div id="stats-score-wrapper" class="hidden flex items-center gap-3">
+                        <div class="flex items-center gap-1 py-1 px-2 bg-slate-950/80 rounded-lg border border-slate-900">
+                            <span class="text-slate-500">得分：</span>
+                            <span id="score-counter" class="font-mono font-bold text-amber-400 text-sm">0</span>
+                        </div>
+                        <div class="flex items-center gap-1 py-1 px-2 bg-slate-950/80 rounded-lg border border-slate-900">
+                            <span class="text-slate-500">連勝：</span>
+                            <span id="streak-counter" class="font-mono font-bold text-pink-400 text-sm">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Interactive Canvas Card -->
+            <div class="bg-slate-900/20 rounded-2xl border border-slate-800/80 p-4 relative flex-grow flex flex-col justify-between select-none">
+                
+                <!-- Sandbox mode banner -->
+                <div id="sandbox-banner" class="flex justify-between items-center mb-2.5 px-1">
+                    <span class="text-xs text-slate-400 flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-ping"></span>
+                        自由作畫：AI 將即時在右側解析您的筆跡
+                    </span>
+                    <span class="text-[10px] font-mono text-slate-500">支援滑鼠及觸控操作</span>
+                </div>
+
+                <!-- Challenge mode target overlay -->
+                <div id="challenge-banner" class="hidden flex justify-between items-center mb-2.5 px-1">
+                    <span class="text-xs text-slate-300">
+                        <i class="fa-solid fa-circle-question mr-1.5 text-cyan-400"></i>
+                        嘗試畫出目標，让右側 AI 猜測的相似度大於 <span class="font-semibold text-cyan-400">30%</span> 即可晉級！
+                    </span>
+                    <button onclick="skipPrompt()" class="text-[11px] font-medium text-slate-400 hover:text-cyan-400 transition flex items-center gap-1">
+                        跳過此題 <i class="fa-solid fa-forward"></i>
+                    </button>
+                </div>
+
+                <!-- Actual Drawing Canvas Box -->
+                <div id="canvas-container" class="relative flex-grow min-h-[300px] md:min-h-[420px] rounded-xl overflow-hidden bg-slate-950 border border-slate-800/60 draw-shadow flex items-center justify-center">
+                    <canvas id="drawing-canvas" class="absolute inset-0 w-full h-full cursor-crosshair z-10"></canvas>
+                    
+                    <!-- Floating Grid guidelines lines (subtle blueprint grid style) -->
+                    <div class="absolute inset-0 grid grid-cols-12 grid-rows-12 pointer-events-none opacity-[0.02]">
+                        <div class="col-span-full border-b border-white"></div><div class="col-span-full border-b border-white"></div><div class="col-span-full border-b border-white"></div>
+                        <div class="col-span-full border-b border-white"></div><div class="col-span-full border-b border-white"></div><div class="col-span-full border-b border-white"></div>
+                        <div class="col-span-full border-b border-white"></div><div class="col-span-full border-b border-white"></div><div class="col-span-full border-b border-white"></div>
+                        <div class="col-span-full border-b border-white"></div><div class="col-span-full border-b border-white"></div>
+                    </div>
+
+                    <!-- Welcome placeholder text -->
+                    <div id="canvas-placeholder" class="absolute pointer-events-none flex flex-col items-center justify-center p-6 text-center select-none z-0">
+                        <div class="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-500 mb-3">
+                            <i class="fa-solid fa-palette text-2xl"></i>
+                        </div>
+                        <p class="text-sm font-medium text-slate-400">在畫布上開始任意畫畫</p>
+                        <p class="text-xs text-slate-600 mt-1">AI 隨後將進行即時分類推算</p>
+                    </div>
+
+                    <!-- Succes feedback overlay -->
+                    <div id="success-overlay" class="hidden absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center z-20 transition duration-300">
+                        <div class="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-400 flex items-center justify-center text-emerald-400 mb-4 animate-bounce">
+                            <i class="fa-solid fa-check text-4xl"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white mb-1">精準辨識！</h3>
+                        <p class="text-sm text-slate-400 mb-6">AI 猜出你畫的是：<span id="success-target-label" class="text-emerald-400 font-bold"></span></p>
+                        <div class="flex gap-4">
+                            <button onclick="startNextChallenge()" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-slate-950 font-bold text-sm rounded-lg transition-all shadow-lg shadow-emerald-500/10">
+                                進入下一題 <i class="fa-solid fa-circle-arrow-right ml-1"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Time up feedback overlay -->
+                    <div id="timeup-overlay" class="hidden absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center p-6 text-center z-20 transition duration-300">
+                        <div class="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-400 flex items-center justify-center text-rose-400 mb-4 animate-pulse">
+                            <i class="fa-solid fa-hourglass-end text-3xl"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-white mb-1">時間終了！</h3>
+                        <p class="text-xs text-slate-400 mb-6">可惜時間內 AI 沒有足夠的信心辨識出這幅作品。</p>
+                        <div class="flex gap-3">
+                            <button onclick="retryCurrentChallenge()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-slate-100 font-medium text-sm rounded-lg transition-all border border-slate-700">
+                                <i class="fa-solid fa-rotate-left mr-1.5"></i>再試一次
+                            </button>
+                            <button onclick="skipPrompt()" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-850 text-slate-400 font-medium text-sm rounded-lg transition-all">
+                                跳過
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Canvas Options & Control Bar -->
+                <div class="flex items-center justify-between mt-4">
+                    <div class="flex gap-2">
+                        <button onclick="clearCanvas()" class="px-4 py-2 bg-slate-900/80 hover:bg-slate-800 active:bg-slate-850 border border-slate-850 hover:border-slate-800 text-slate-300 hover:text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition duration-150">
+                            <i class="fa-regular fa-trash-can text-rose-400"></i>清除全部
+                        </button>
+                        <button onclick="undoStroke()" class="px-4 py-2 bg-slate-900/80 hover:bg-slate-800 active:bg-slate-850 border border-slate-850 hover:border-slate-800 text-slate-300 hover:text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition duration-150">
+                            <i class="fa-solid fa-rotate-left"></i>撤銷上筆
+                        </button>
+                    </div>
+
+                    <div class="flex items-center gap-3">
+                        <span class="text-[10px] text-slate-500">筆畫寬度</span>
+                        <div class="flex items-center gap-2 bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-900">
+                            <button onclick="setStrokeWidth(4)" id="stroke-btn-4" class="w-5 h-5 rounded flex items-center justify-center transition border border-transparent hover:bg-slate-900 text-[10px] text-slate-400">細</button>
+                            <button onclick="setStrokeWidth(7)" id="stroke-btn-7" class="w-5 h-5 rounded flex items-center justify-center transition border border-cyan-500/40 bg-cyan-950/50 text-[10px] text-cyan-300">中</button>
+                            <button onclick="setStrokeWidth(12)" id="stroke-btn-12" class="w-5 h-5 rounded flex items-center justify-center transition border border-transparent hover:bg-slate-900 text-[10px] text-slate-400">粗</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side: AI Diagnostic Feed -->
+        <div class="lg:col-span-5 flex flex-col justify-between space-y-4">
+            
+            <!-- Real-time Diagnostic Panel -->
+            <div class="bg-slate-900/30 rounded-2xl border border-slate-800/80 p-5 flex flex-col justify-between flex-grow h-full">
+                
+                <!-- Monitor Header -->
+                <div class="flex items-center justify-between border-b border-slate-900 pb-3 mb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="relative flex h-2 w-2">
+                            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        <h2 class="text-sm font-bold tracking-wider text-slate-300 font-mono">NEURAL FEED - LIVE</h2>
+                    </div>
+                    <span class="text-[10px] font-mono text-slate-500" id="predict-latency">-- ms</span>
+                </div>
+
+                <!-- Feed Visualization Section (What AI Sees) -->
+                <div class="flex flex-col items-center justify-center mb-5 p-4 bg-slate-950/80 border border-slate-850 rounded-xl relative overflow-hidden group">
+                    <div class="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-cyan-500/20 to-transparent"></div>
+                    <span class="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                        <i class="fa-solid fa-microchip text-[9px] text-cyan-500"></i>神經網絡解析視窗 (28 × 28 px)
+                    </span>
+                    
+                    <div class="relative flex items-center justify-center">
+                        <!-- Pixelated Preview Canvas -->
+                        <div class="p-1 bg-slate-900 rounded-lg border border-slate-800 shadow-inner">
+                            <canvas id="cropped-preview-canvas" width="28" height="28" class="w-28 h-28 pixelated-render bg-black block select-none pointer-events-none"></canvas>
+                        </div>
+                        
+                        <!-- Overlay decorative crosshairs -->
+                        <div class="absolute -inset-2 border border-cyan-500/10 rounded-xl pointer-events-none"></div>
+                        <div class="absolute -top-1 -left-1 w-2 h-2 border-t border-l border-cyan-500/30"></div>
+                        <div class="absolute -top-1 -right-1 w-2 h-2 border-t border-r border-cyan-500/30"></div>
+                        <div class="absolute -bottom-1 -left-1 w-2 h-2 border-b border-l border-cyan-500/30"></div>
+                        <div class="absolute -bottom-1 -right-1 w-2 h-2 border-b border-r border-cyan-500/30"></div>
+                    </div>
+                </div>
+
+                <!-- Predictions ranking list -->
+                <div class="flex-grow flex flex-col justify-between">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-semibold text-slate-400">AI 最佳預測排序</span>
+                        <span class="text-[10px] font-mono text-slate-600 bg-slate-950 px-2 py-0.5 rounded border border-slate-900">SOFTMAX CLASSES</span>
+                    </div>
+
+                    <!-- Probabilities Stack Container -->
+                    <div id="predictions-list" class="space-y-2.5 max-h-[290px] overflow-y-auto pr-1">
+                        <!-- Instantiated by JS dynamically -->
+                        <div class="text-center py-8 text-xs text-slate-600 text-slate-500 font-mono">
+                            <i class="fa-solid fa-pencil mr-1 font-sans"></i>等待在畫布畫下圖形
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Confidence Status Card Footer -->
+                <div class="mt-5 pt-4 border-t border-slate-900">
+                    <div class="bg-indigo-950/20 rounded-xl border border-indigo-900/30 p-3.5 flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+                            <i class="fa-solid fa-code text-sm"></i>
+                        </div>
+                        <div class="leading-tight flex-grow">
+                            <h4 class="text-xs font-bold text-slate-200">關於你的自定義模型</h4>
+                            <p class="text-[10px] text-slate-400 mt-0.5">此模型具有 15 個預測類別。我們使用了 2D 卷積、最大池化和密集分佈層來確保高效的圖像辨認。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Supported Categories Quick Drawer -->
+            <div class="bg-slate-900/20 rounded-2xl border border-slate-800/80 p-4">
+                <span class="text-xs font-semibold text-slate-400 block mb-2.5 flex items-center gap-1.5">
+                    <i class="fa-regular fa-folder-open text-cyan-400"></i>AI 模型支援的 15 種類型
+                </span>
+                <div class="grid grid-cols-5 gap-1 text-[10px] text-center" id="categories-grid">
+                    <!-- Standard categories placeholders loaded via js loop -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Base Footer -->
+    <footer class="w-full border-t border-slate-900/60 bg-slate-950/60 py-4 px-4 text-center text-[11px] text-slate-500 select-none">
+        <p>AI Doodle Board &copy; 2026. Powered by Google AI Studio & custom TensorFlow.js Client Deep Neural Network.</p>
+    </footer>
+
+    <!-- Script Logics -->
+    <script>
+        // Global Constants
+        const LABELS_ENGLISH = [
+            'apple', 'sun', 'umbrella', 'house', 'fish', 
+            'banana', 'eyeglasses', 'cat', 'dog', 'car', 
+            'tree', 'cloud', 'star', 'moon', 'mountain'
+        ];
+
+        const LABEL_MAP = {
+            'apple': { name: '蘋果', emoji: '🍎' },
+            'sun': { name: '太陽', emoji: '☀️' },
+            'umbrella': { name: '雨傘', emoji: '☂️' },
+            'house': { name: '房子', emoji: '🏠' },
+            'fish': { name: '魚', emoji: '🐟' },
+            'banana': { name: '香蕉', emoji: '🍌' },
+            'eyeglasses': { name: '眼鏡', emoji: '👓' },
+            'cat': { name: '貓咪', emoji: '🐱' },
+            'dog': { name: '小狗', emoji: '🐶' },
+            'car': { name: '汽車', emoji: '🚗' },
+            'tree': { name: '大樹', emoji: '🌳' },
+            'cloud': { name: '雲朵', emoji: '☁️' },
+            'star': { name: '星星', emoji: '⭐' },
+            'moon': { name: '月亮', emoji: '🌙' },
+            'mountain': { name: '高山', emoji: '🏔️' }
+        };
+
+        // UI Binding elements
+        let canvas, ctx;
+        let pCanvas, pCtx;
+        let model = null;
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+
+        // Stroke memory representation (to scale nicely to 28x28)
+        let strokes = []; // Array of Arrays: Array of strokes, each stroke is [{x, y}]
+        let currentStroke = null;
+
+        // Drawing brush properties
+        let brushColor = '#22d3ee'; // Smooth Glowing Cyan
+        let brushSize = 7;
+
+        // Game Mode variables
+        let currentGameMode = 'sandbox'; // or 'challenge'
+        let targetLabel = '';
+        let targetDetail = null;
+        let timeLeft = 45;
+        let challengeTimer = null;
+        let gameScore = 0;
+        let gameStreak = 0;
+
+        // Throttling live calculations
+        let lastPredictTime = 0;
+
+        // Set up DOM bindings
+        window.addEventListener('DOMContentLoaded', () => {
+            initDOM();
+            setupCanvas();
+            renderCategoriesGrid();
+            initModel();
+        });
+
+        function initDOM() {
+            canvas = document.getElementById('drawing-canvas');
+            ctx = canvas.getContext('2d');
+            
+            pCanvas = document.getElementById('cropped-preview-canvas');
+            pCtx = pCanvas.getContext('2d');
+
+            // Render placeholders for empty state
+            clearPreviewCanvas();
+
+            // Set up resize observer to keep canvas perfectly reactive
+            const observer = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    const width = Math.floor(entry.contentRect.width);
+                    const height = Math.floor(entry.contentRect.height);
+                    
+                    // Don't clear strokes data, just store and redraw
+                    const oldW = canvas.width;
+                    const oldH = canvas.height;
+                    
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    // Reinitialize canvas default stylings
+                    initCanvasStyling();
+                    
+                    // Redraw our glorious drawings
+                    redrawCanvas();
+                }
+            });
+            observer.observe(document.getElementById('canvas-container'));
+        }
+
+        // Initialize model
+        async function initModel() {
+            try {
+                // Fetch local labels file to confirm correctness
+                try {
+                    const res = await fetch('/labels.txt');
+                    const text = await res.text();
+                    const words = text.split('\n').map(w => w.trim()).filter(Boolean);
+                    console.log('Confirmed label.txt categories:', words);
+                } catch (e) {
+                    console.warn('Fallback standard labels used directly:', e);
+                }
+
+                // Load custom tf model located in relative workspace
+                model = await tf.loadLayersModel('./model.json');
+                console.log('TensorFlow model successfully loaded!');
+
+                // Warm up predictions
+                tf.tidy(() => {
+                    const warmTensor = tf.zeros([1, 28, 28, 1]);
+                    model.predict(warmTensor).dispose();
+                });
+
+                // Dismiss loading overlay nicely
+                document.getElementById('loading-overlay').classList.add('opacity-0');
+                setTimeout(() => {
+                    document.getElementById('loading-overlay').classList.add('hidden');
+                }, 300);
+
+            } catch (err) {
+                console.error('Core loading failed:', err);
+                // Present clean actionable feedback error state detailing the alternative weight file secure upload tunnel
+                document.getElementById('loading-text').innerHTML = `
+                    <div class="px-5 py-4 bg-slate-900 border border-slate-800 rounded-2xl max-w-lg mx-auto text-center shadow-2xl">
+                        <div class="w-14 h-14 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                            <i class="fa-solid fa-cloud-arrow-up text-2xl"></i>
+                        </div>
+                        <h4 class="text-base font-bold text-slate-100 mb-1 leading-tight text-center">自訂模型權重上傳通道</h4>
+                        
+                        <div class="bg-slate-950/40 border border-slate-800 p-4 rounded-xl my-4 text-left">
+                             <p class="text-xs text-slate-300 leading-relaxed mb-3">
+                                 由於 AI Studio 開發平台在網頁 IDE 檔案管理器限制上傳 <code>.bin</code> 二進位檔類型，我們特別為您建立了這個<strong>專屬網頁上傳通道</strong>！
+                             </p>
+                             <p class="text-xs text-slate-400 leading-relaxed">
+                                 請直接在下方按鈕選擇您電腦中訓練好的 <strong><code>group1-shard1of1.bin</code></strong> 檔 (約 2,000 多 KB)，我們將會自動將其保存到伺服器並即時啟用您的專屬模型：
+                             </p>
+                             
+                             <!-- Custom Weight Upload Box -->
+                             <div class="mt-4 p-3 bg-slate-950 rounded-lg border border-slate-800/80 flex flex-col items-center justify-center gap-2">
+                                 <label class="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-slate-950 font-bold rounded-lg cursor-pointer text-xs flex items-center gap-1.5 transition">
+                                     <i class="fa-solid fa-file-import"></i> 選擇您電腦中的 group1-shard1of1.bin
+                                     <input type="file" id="bin-file-input" accept=".bin" class="hidden" onchange="handleBinFileUpload(event)">
+                                 </label>
+                                 <p id="upload-status-text" class="text-[10px] text-slate-500 font-mono text-center">僅支援以 .bin 結尾的權重分片檔案</p>
+                             </div>
+                        </div>
+
+                        <div class="bg-rose-950/20 border border-rose-900/40 rounded-xl p-3 mb-4 text-left">
+                            <p class="text-[10px] font-mono text-rose-300 leading-normal break-all">
+                                原加載錯誤代碼：${err.message || err}
+                            </p>
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <button onclick="startDemoMode()" class="w-full px-4 py-2.5 bg-gradient-to-r from-slate-800 to-slate-750 hover:bg-slate-700 text-slate-100 font-bold rounded-xl transition active:scale-95 text-xs border border-slate-700 flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> 繞過，我想先使用「互動模擬展示模式」體驗畫布
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Action handler for user-selected custom binary weights
+        async function handleBinFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const statusText = document.getElementById('upload-status-text');
+            statusText.innerText = '正在嘗試上傳模型權重檔，請稍候...';
+            statusText.className = 'text-[11px] text-amber-400 font-bold animate-pulse';
+
+            try {
+                const response = await fetch('/api/upload-weights', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/octet-stream'
+                    },
+                    body: file
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    statusText.innerText = `上傳成功 (${Math.round(data.size / 1024)} KB)！正在為您重新載入模型...`;
+                    statusText.className = 'text-[11px] text-emerald-400 font-bold';
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1200);
+                } else {
+                    throw new Error(data.error || 'Server error uploading file.');
+                }
+            } catch (err) {
+                console.error(err);
+                statusText.innerText = '上傳失敗：' + err.message;
+                statusText.className = 'text-[11px] text-rose-400 font-bold';
+            }
+        }
+
+        // Action starting mock mode fallback
+        function startDemoMode() {
+            model = 'mock';
+            console.log('Launched in mock model fallback simulation mode.');
+            document.getElementById('loading-overlay').classList.add('opacity-0');
+            setTimeout(() => {
+                document.getElementById('loading-overlay').classList.add('hidden');
+            }, 300);
+
+            // Highlight mock indicator inside badge
+            const badge = document.querySelector('.fa-wand-magic-sparkles').parentElement.querySelector('.bg-cyan-950');
+            if (badge) {
+                badge.innerText = "SIMULATION DEMO";
+                badge.className = "text-xs bg-amber-950 text-amber-400 font-mono px-2 py-0.5 rounded-full border border-amber-800/50";
+            }
+        }
+
+        function setupCanvas() {
+            // Mouse event handlers
+            canvas.addEventListener('mousedown', startDrawingEvent);
+            canvas.addEventListener('mousemove', drawEvent);
+            window.addEventListener('mouseup', stopDrawingEvent);
+
+            // Touch event handlers for tablets & mobile responsiveness
+            canvas.addEventListener('touchstart', (e) => {
+                if (e.touches.length > 0) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const rect = canvas.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    const y = touch.clientY - rect.top;
+                    startDrawing(x, y);
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const rect = canvas.getBoundingClientRect();
+                    const x = touch.clientX - rect.left;
+                    const y = touch.clientY - rect.top;
+                    draw(x, y);
+                }
+            }, { passive: false });
+
+            window.addEventListener('touchend', () => {
+                stopDrawing();
+            });
+        }
+
+        function initCanvasStyling() {
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.lineWidth = brushSize;
+            ctx.strokeStyle = brushColor;
+            
+            // Neon neon styling
+            ctx.shadowBlur = 4;
+            ctx.shadowColor = brushColor;
+        }
+
+        function startDrawingEvent(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            startDrawing(x, y);
+        }
+
+        function startDrawing(x, y) {
+            isDrawing = true;
+            lastX = x;
+            lastY = y;
+
+            // Hide instruction banner placeholder nicely
+            document.getElementById('canvas-placeholder').classList.add('opacity-0');
+
+            // Save stroke memory representation
+            currentStroke = [{ x, y }];
+            strokes.push(currentStroke);
+
+            // Immediate brush visual flow
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        }
+
+        function drawEvent(e) {
+            if (!isDrawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            draw(x, y);
+        }
+
+        function draw(x, y) {
+            if (!isDrawing) return;
+
+            // Draw line on visible canvas
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+
+            lastX = x;
+            lastY = y;
+
+            // Record stroke point
+            if (currentStroke) {
+                currentStroke.push({ x, y });
+            }
+
+            // Realtime machine learning predict loops (throttled nicely to 120ms)
+            const now = performance.now();
+            if (now - lastPredictTime > 120) {
+                lastPredictTime = now;
+                predictDrawing();
+            }
+        }
+
+        function stopDrawingEvent() {
+            stopDrawing();
+        }
+
+        function stopDrawing() {
+            if (isDrawing) {
+                isDrawing = false;
+                currentStroke = null;
+                // Final predict trigger to lock classification on point stop
+                predictDrawing();
+            }
+        }
+
+        function setStrokeWidth(size) {
+            brushSize = size;
+            initCanvasStyling();
+            
+            // Adjust buttons active styling
+            [4, 7, 12].forEach(s => {
+                const button = document.getElementById(`stroke-btn-${s}`);
+                if (s === size) {
+                    button.className = "w-5 h-5 rounded flex items-center justify-center transition border border-cyan-500/40 bg-cyan-950/50 text-[10px] text-cyan-300";
+                } else {
+                    button.className = "w-5 h-5 rounded flex items-center justify-center transition border border-transparent hover:bg-slate-900 text-[10px] text-slate-400";
+                }
+            });
+        }
+
+        function clearCanvas() {
+            strokes = [];
+            currentStroke = null;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('canvas-placeholder').classList.remove('opacity-0');
+            clearPreviewCanvas();
+            resetPredictionsOutput();
+        }
+
+        function undoStroke() {
+            if (strokes.length > 0) {
+                strokes.pop();
+                redrawCanvas();
+                
+                if (strokes.length === 0) {
+                    document.getElementById('canvas-placeholder').classList.remove('opacity-0');
+                    clearPreviewCanvas();
+                    resetPredictionsOutput();
+                } else {
+                    predictDrawing();
+                }
+            }
+        }
+
+        function redrawCanvas() {
+            // Fully clear canvas board
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (strokes.length === 0) return;
+
+            // Redraw everything saved in history
+            strokes.forEach(stroke => {
+                if (stroke.length === 0) return;
+                
+                ctx.beginPath();
+                ctx.moveTo(stroke[0].x, stroke[0].y);
+                
+                for (let i = 1; i < stroke.length; i++) {
+                    ctx.lineTo(stroke[i].x, stroke[i].y);
+                }
+                ctx.stroke();
+            });
+        }
+
+        function clearPreviewCanvas() {
+            pCtx.fillStyle = '#000000';
+            pCtx.fillRect(0, 0, 28, 28);
+            
+            // Draw an elegant decorative 28x28 checker dots pattern on diagnostics
+            pCtx.fillStyle = '#111827';
+            for (let i = 0; i < 28; i += 4) {
+                for (let j = 0; j < 28; j += 4) {
+                    pCtx.fillRect(i, j, 1.5, 1.5);
+                }
+            }
+        }
+
+        function resetPredictionsOutput() {
+            const list = document.getElementById('predictions-list');
+            list.innerHTML = `
+                <div class="text-center py-8 text-xs text-slate-500 font-mono">
+                    <i class="fa-solid fa-pencil mr-1 font-sans"></i>等待在畫布畫下圖形
+                </div>
+            `;
+            document.getElementById('predict-latency').innerText = '-- ms';
+        }
+
+        // TensorFlow Core Image Preprocessing
+        function prepareDownscaledGrid() {
+            // Start transparent cleared preview
+            pCtx.fillStyle = '#000000';
+            pCtx.fillRect(0, 0, 28, 28);
+
+            if (strokes.length === 0) {
+                return null;
+            }
+
+            // Find aggregate bounding borders across all strokes
+            let minX = Infinity, maxX = -Infinity;
+            let minY = Infinity, maxY = -Infinity;
+
+            strokes.forEach(stroke => {
+                stroke.forEach(pt => {
+                    if (pt.x < minX) minX = pt.x;
+                    if (pt.x > maxX) maxX = pt.x;
+                    if (pt.y < minY) minY = pt.y;
+                    if (pt.y > maxY) maxY = pt.y;
+                });
+            });
+
+            // Prevent single point or divide-by-zero anomalies
+            const boxW = (maxX - minX) || 1;
+            const boxH = (maxY - minY) || 1;
+
+            // Calculate fit-inside coordinates
+            // QuickDraw drawings should have a margin padding around borders (e.g., 3-4 px padding)
+            // Target bounding size in 28x28 is 20x20
+            const maxDimension = 20;
+            const scale = Math.min(maxDimension / boxW, maxDimension / boxH);
+
+            // Compute center alignments
+            const offsetX = 14 - (boxW * scale) / 2;
+            const offsetY = 14 - (boxH * scale) / 2;
+
+            // Set up preprocessed lines aesthetics
+            pCtx.strokeStyle = '#ffffff';
+            pCtx.lineWidth = 1.8;
+            pCtx.lineCap = 'round';
+            pCtx.lineJoin = 'round';
+
+            // Draw processed paths to 28x28 pixel preview canvas
+            strokes.forEach(stroke => {
+                if (stroke.length === 0) return;
+                
+                pCtx.beginPath();
+                const startX = (stroke[0].x - minX) * scale + offsetX;
+                const startY = (stroke[0].y - minY) * scale + offsetY;
+                pCtx.moveTo(startX, startY);
+
+                for (let i = 1; i < stroke.length; i++) {
+                    const nextX = (stroke[i].x - minX) * scale + offsetX;
+                    const nextY = (stroke[i].y - minY) * scale + offsetY;
+                    pCtx.lineTo(nextX, nextY);
+                }
+                pCtx.stroke();
+            });
+
+            // Extract pixel array
+            return pCtx.getImageData(0, 0, 28, 28);
+        }
+
+        async function predictDrawing() {
+            if (!model || strokes.length === 0) return;
+
+            const startTime = performance.now();
+            const imgData = prepareDownscaledGrid();
+            if (!imgData) return;
+
+            let candidates = [];
+
+            if (model === 'mock') {
+                // Interactive AI drawing simulation mode
+                const totalPoints = strokes.reduce((acc, stroke) => acc + stroke.length, 0);
+                const completionRatio = Math.min(totalPoints / 50, 1.0); // Full shape at ~50 points
+
+                candidates = LABELS_ENGLISH.map((englishClass) => {
+                    const detail = LABEL_MAP[englishClass] || { name: englishClass, emoji: '✏️' };
+                    let prob = 0.01 + Math.random() * 0.04; // low baseline noise
+
+                    if (currentGameMode === 'challenge' && englishClass === targetLabel) {
+                        // In challenge mode, increase matching score as the user draws more lines
+                        prob = 0.05 + completionRatio * 0.45 + Math.random() * 0.08;
+                    } else if (currentGameMode === 'sandbox') {
+                        // Sandbox: seed highest confidence classes with coordinates hash to feel reactive
+                        const seedIndex = (totalPoints) % LABELS_ENGLISH.length;
+                        const secondarySeed = (totalPoints * 3) % LABELS_ENGLISH.length;
+                        if (englishClass === LABELS_ENGLISH[seedIndex]) {
+                            prob = 0.22 + completionRatio * 0.38 + Math.random() * 0.12;
+                        } else if (englishClass === LABELS_ENGLISH[secondarySeed]) {
+                            prob = 0.09 + completionRatio * 0.18 + Math.random() * 0.08;
+                        }
+                    }
+                    return {
+                        english: englishClass,
+                        name: detail.name,
+                        emoji: detail.emoji,
+                        probability: prob
+                    };
+                });
+            } else {
+                // Convert raw ImageData array to normalization inputs format safely inside tidy
+                const predictions = await tf.tidy(() => {
+                    const intensities = new Float32Array(28 * 28);
+                    for (let i = 0; i < 28 * 28; i++) {
+                        // Extract red channel normalized to [0, 1]
+                        intensities[i] = imgData.data[i * 4] / 255.0;
+                    }
+
+                    // Reshape input node: [1, 28, 28, 1]
+                    const tensor = tf.tensor4d(intensities, [1, 28, 28, 1]);
+                    const result = model.predict(tensor);
+                    return result.dataSync(); // Returns Float32Array
+                });
+
+                candidates = Array.from(predictions).map((prob, idx) => {
+                    const englishClass = LABELS_ENGLISH[idx];
+                    const detail = LABEL_MAP[englishClass] || { name: englishClass, emoji: '✏️' };
+                    return {
+                        english: englishClass,
+                        name: detail.name,
+                        emoji: detail.emoji,
+                        probability: prob
+                    };
+                });
+            }
+
+            // Normalize probabilities to sum up to exactly 1
+            const totalProb = candidates.reduce((sum, c) => sum + c.probability, 0) || 1;
+            candidates.forEach(c => c.probability /= totalProb);
+
+            const latency = Math.round(performance.now() - startTime);
+            document.getElementById('predict-latency').innerText = model === 'mock' ? `${latency} ms (Simulated)` : `${latency} ms`;
+
+            // Sort descending
+            candidates.sort((a, b) => b.probability - a.probability);
+
+            // Render live result to panel
+            renderPredictionsUI(candidates);
+
+            // Trigger Challenge state analysis if active
+            checkChallengeMatch(candidates);
+        }
+
+        function renderPredictionsUI(predictions) {
+            const container = document.getElementById('predictions-list');
+            container.innerHTML = '';
+
+            // We only show top 5 options
+            const topFive = predictions.slice(0, 5);
+
+            topFive.forEach((p, idx) => {
+                const percent = Math.round(p.probability * 100);
+                
+                // Color grades based on confidence levels
+                let barColor = 'bg-slate-700';
+                let textColor = 'text-slate-300';
+                
+                if (idx === 0) {
+                    if (percent > 30) {
+                        barColor = 'bg-gradient-to-r from-cyan-500 to-indigo-500';
+                        textColor = 'text-cyan-400 font-bold';
+                    } else if (percent > 15) {
+                        barColor = 'bg-gradient-to-r from-slate-600 to-cyan-600';
+                        textColor = 'text-slate-200';
+                    }
+                } else if (idx === 1 && percent > 15) {
+                    barColor = 'bg-slate-600';
+                }
+
+                const itemHTML = `
+                    <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-900 flex flex-col gap-1.5 transition-all duration-150 hover:border-slate-800">
+                        <div class="flex items-center justify-between text-xs">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm">${p.emoji}</span>
+                                <span class="${textColor}">${p.name}</span>
+                                <span class="text-[10px] font-mono text-slate-500">${p.english}</span>
+                            </div>
+                            <span class="font-mono font-bold ${idx === 0 && percent > 30 ? 'text-cyan-400' : 'text-slate-400'}">${percent}%</span>
+                        </div>
+                        <div class="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                            <div class="${barColor} h-1.5 rounded-full transition-all duration-300" style="width: ${percent}%"></div>
+                        </div>
+                    </div>
+                `;
+                container.insertAdjacentHTML('beforeend', itemHTML);
+            });
+        }
+
+        // Game Challenge Logic
+        function setGameMode(mode) {
+            if (currentGameMode === mode) return;
+            currentGameMode = mode;
+
+            const sBtn = document.getElementById('mode-sandbox');
+            const cBtn = document.getElementById('mode-challenge');
+
+            const pWrapper = document.getElementById('challenge-prompt-wrapper');
+            const tWrapper = document.getElementById('stats-timer-wrapper');
+            const sWrapper = document.getElementById('stats-score-wrapper');
+
+            const sBanner = document.getElementById('sandbox-banner');
+            const cBanner = document.getElementById('challenge-banner');
+
+            if (mode === 'sandbox') {
+                // Style adjustment
+                sBtn.className = "px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all duration-200 bg-slate-800 text-slate-200";
+                cBtn.className = "px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all duration-200 text-slate-400 hover:text-slate-200";
+                
+                // Toggle interfaces Visibility
+                pWrapper.classList.add('hidden');
+                tWrapper.classList.add('hidden');
+                sWrapper.classList.add('hidden');
+                sBanner.classList.remove('hidden');
+                cBanner.classList.add('hidden');
+
+                // Stop active timers
+                clearInterval(challengeTimer);
+                
+                // Clear state
+                dismissOverlays();
+                clearCanvas();
+
+            } else {
+                // Style adjustment
+                sBtn.className = "px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all duration-200 text-slate-400 hover:text-slate-200";
+                cBtn.className = "px-3.5 py-1.5 text-xs font-semibold rounded-md transition-all duration-200 bg-amber-500/10 border border-amber-500/20 text-amber-300";
+
+                pWrapper.classList.remove('hidden');
+                tWrapper.classList.remove('hidden');
+                sWrapper.classList.remove('hidden');
+                sBanner.classList.add('hidden');
+                cBanner.classList.remove('hidden');
+
+                gameScore = 0;
+                gameStreak = 0;
+                updateStatsUI();
+
+                // Launch first game loop
+                startNewChallenge();
+            }
+        }
+
+        function generateNextPrompt() {
+            // Pick a random label
+            const randIndex = Math.floor(Math.random() * LABELS_ENGLISH.length);
+            targetLabel = LABELS_ENGLISH[randIndex];
+            targetDetail = LABEL_MAP[targetLabel];
+
+            document.getElementById('target-emoji').innerText = targetDetail.emoji;
+            document.getElementById('target-chinese').innerText = targetDetail.name;
+            document.getElementById('target-english').innerText = `(${targetLabel})`;
+        }
+
+        function startNewChallenge() {
+            dismissOverlays();
+            clearCanvas();
+            generateNextPrompt();
+            
+            // Set Timer
+            timeLeft = 45;
+            document.getElementById('game-timer').innerText = timeLeft;
+            document.getElementById('game-timer').className = "font-mono font-bold text-sm text-slate-200";
+
+            clearInterval(challengeTimer);
+            challengeTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('game-timer').innerText = timeLeft;
+
+                // Warning color on low timer
+                if (timeLeft <= 10) {
+                    document.getElementById('game-timer').className = "font-mono font-bold text-sm text-rose-500 animate-pulse";
+                }
+
+                if (timeLeft <= 0) {
+                    clearInterval(challengeTimer);
+                    showTimeUp();
+                }
+            }, 1000);
+        }
+
+        function retryCurrentChallenge() {
+            dismissOverlays();
+            clearCanvas();
+
+            timeLeft = 45;
+            document.getElementById('game-timer').innerText = timeLeft;
+            document.getElementById('game-timer').className = "font-mono font-bold text-sm text-slate-200";
+
+            clearInterval(challengeTimer);
+            challengeTimer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('game-timer').innerText = timeLeft;
+                if (timeLeft <= 10) {
+                    document.getElementById('game-timer').className = "font-mono font-bold text-sm text-rose-500 animate-pulse";
+                }
+                if (timeLeft <= 0) {
+                    clearInterval(challengeTimer);
+                    showTimeUp();
+                }
+            }, 1000);
+        }
+
+        function skipPrompt() {
+            gameStreak = 0; // Break win streak on skip
+            updateStatsUI();
+            startNewChallenge();
+        }
+
+        function updateStatsUI() {
+            document.getElementById('score-counter').innerText = gameScore;
+            document.getElementById('streak-counter').innerText = gameStreak;
+        }
+
+        function checkChallengeMatch(candidates) {
+            if (currentGameMode !== 'challenge' || candidates.length === 0) return;
+
+            // Target candidate evaluation
+            const topGuess = candidates[0];
+
+            // If the matching confidence > 30% and it matches current query
+            if (topGuess.english === targetLabel && topGuess.probability >= 0.30) {
+                clearInterval(challengeTimer);
+                
+                // Increment Scores
+                gameScore += 100 + (gameStreak * 20); // Multipliers!
+                gameStreak++;
+                updateStatsUI();
+
+                // Trigger celebration
+                triggerConfetti();
+                showSuccess();
+            }
+        }
+
+        function showSuccess() {
+            document.getElementById('success-target-label').innerText = `${targetDetail.emoji} ${targetDetail.name}`;
+            document.getElementById('success-overlay').classList.remove('hidden');
+            document.getElementById('success-overlay').classList.add('flex');
+        }
+
+        function showTimeUp() {
+            document.getElementById('timeup-overlay').classList.remove('hidden');
+            document.getElementById('timeup-overlay').classList.add('flex');
+            gameStreak = 0; // Break Streak
+            updateStatsUI();
+        }
+
+        function dismissOverlays() {
+            document.getElementById('success-overlay').classList.add('hidden');
+            document.getElementById('success-overlay').classList.remove('flex');
+            document.getElementById('timeup-overlay').classList.add('hidden');
+            document.getElementById('timeup-overlay').classList.remove('flex');
+        }
+
+        function triggerConfetti() {
+            // Elegant side confetti bursts
+            const end = Date.now() + (1.2 * 1000);
+            const colors = ['#22d3ee', '#818cf8', '#34d399', '#fbbf24'];
+
+            (function frame() {
+                confetti({
+                    particleCount: 3,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0, y: 0.8 },
+                    colors: colors
+                });
+                confetti({
+                    particleCount: 3,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1, y: 0.8 },
+                    colors: colors
+                });
+
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+
+        // Help drawer lists grid render
+        function renderCategoriesGrid() {
+            const grid = document.getElementById('categories-grid');
+            grid.innerHTML = '';
+
+            LABELS_ENGLISH.forEach(label => {
+                const detail = LABEL_MAP[label];
+                const itemHTML = `
+                    <div class="p-1 px-1.5 bg-slate-900/30 rounded border border-slate-900/60 text-slate-400 group hover:border-slate-800 transition duration-150">
+                        <div class="text-[11px] group-hover:scale-110 duration-150">${detail.emoji}</div>
+                        <div class="text-[8px] mt-0.5 truncate text-slate-500 group-hover:text-cyan-400 font-medium">${detail.name}</div>
+                    </div>
+                `;
+                grid.insertAdjacentHTML('beforeend', itemHTML);
+            });
+        }
+    </script>
+</body>
+</html>

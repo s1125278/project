@@ -1,0 +1,15 @@
+apple
+sun
+umbrella
+house
+fish
+banana
+eyeglasses
+cat
+dog
+car
+tree
+cloud
+star
+moon
+mountain
