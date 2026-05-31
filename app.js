@@ -46,8 +46,8 @@ const HINT_SVGS = {
   "star-1": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="#fff"/><polygon points="60,18 68,46 98,46 74,62 84,92 60,74 36,92 46,62 22,46 52,46" fill="none" stroke="#111" stroke-width="3"/></svg>`,
   "star-2": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="#fff"/><polygon points="60,18 68,46 98,46 74,62 84,92 60,74 36,92 46,62 22,46 52,46" fill="none" stroke="#111" stroke-width="3"/></svg>`,
   "sun-0": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="#fff"/><circle cx="60" cy="60" r="22" fill="none" stroke="#111" stroke-width="3"/></svg>`,
-  "sun-1": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="#fff"/><circle cx="60" cy="60" r="22" fill="none" stroke="#111" stroke-width="3"/><line x1="60" y1="60" x2="88" y2="60" stroke="#111" stroke-width="2"/><line x1="60" y1="60" x2="80" y2="80" stroke="#111" stroke-width="2"/><line x1="60" y1="60" x2="60" y2="88" stroke="#111" stroke-width="2"/><line x1="60" y1="60" x2="40" y2="80" stroke="#111" stroke-width="2"/><line x1="60" y1="60" x2="32" y2="60" stroke="#111" stroke-width="2"/><line x1="60" y1="60" x2="40" y2="40" stroke="#111" stroke-width="2"/><line x1="60" y1="60" x2="60" y2="32" stroke="#111" stroke-width="2"/><line x1="60" y1="60" x2="80" y2="40" stroke="#111" stroke-width="2"/></svg>`,
-  "sun-2": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="#fff"/><circle cx="60" cy="60" r="20" fill="none" stroke="#111" stroke-width="3"/><line x1="60" y1="60" x2="92" y2="60" stroke="#111" stroke-width="2.5"/><line x1="60" y1="60" x2="88" y2="76" stroke="#111" stroke-width="2.5"/><line x1="60" y1="60" x2="76" y2="88" stroke="#111" stroke-width="2.5"/><line x1="60" y1="60" x2="60" y2="92" stroke="#111" stroke-width="2.5"/><line x1="60" y1="60" x2="44" y2="88" stroke="#111" stroke-width="2.5"/><line x1="60" y1="60" x2="32" y2="76" stroke="#111" stroke-width="2.5"/><line x1="60" y1="60" x2="28" y2="60" stroke="#111" stroke-width="2.5"/><line x1="60" y1="60" x2="32" y2="44" stroke="#111" stroke-width="2.5"/><line x1="60" y1="60" x2="44" y2="32" stroke="#111" stroke-width="2.5"/><line x1="60" y1="60" x2="60" y2="28" stroke="#111" stroke-width="2.5"/><line x1="60" y1="60" x2="76" y2="32" stroke="#111" stroke-width="2.5"/><line x1="60" y1="60" x2="88" y2="44" stroke="#111" stroke-width="2.5"/></svg>`,
+  "sun-1": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="#fff"/><circle cx="60" cy="60" r="22" fill="none" stroke="#111" stroke-width="3"/><line x1="82" y1="60" x2="98" y2="60" stroke="#111" stroke-width="2"/><line x1="75" y1="75" x2="87" y2="87" stroke="#111" stroke-width="2"/><line x1="60" y1="82" x2="60" y2="98" stroke="#111" stroke-width="2"/><line x1="45" y1="75" x2="33" y2="87" stroke="#111" stroke-width="2"/><line x1="38" y1="60" x2="22" y2="60" stroke="#111" stroke-width="2"/><line x1="45" y1="45" x2="33" y2="33" stroke="#111" stroke-width="2"/><line x1="60" y1="38" x2="60" y2="22" stroke="#111" stroke-width="2"/><line x1="75" y1="45" x2="87" y2="33" stroke="#111" stroke-width="2"/></svg>`,
+  "sun-2": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="#fff"/><circle cx="60" cy="60" r="22" fill="none" stroke="#111" stroke-width="3"/><line x1="82" y1="60" x2="98" y2="60" stroke="#111" stroke-width="2.5"/><line x1="79" y1="71" x2="93" y2="79" stroke="#111" stroke-width="2.5"/><line x1="71" y1="79" x2="79" y2="93" stroke="#111" stroke-width="2.5"/><line x1="60" y1="82" x2="60" y2="98" stroke="#111" stroke-width="2.5"/><line x1="49" y1="79" x2="41" y2="93" stroke="#111" stroke-width="2.5"/><line x1="41" y1="71" x2="27" y2="79" stroke="#111" stroke-width="2.5"/><line x1="38" y1="60" x2="22" y2="60" stroke="#111" stroke-width="2.5"/><line x1="41" y1="49" x2="27" y2="41" stroke="#111" stroke-width="2.5"/><line x1="49" y1="41" x2="41" y2="27" stroke="#111" stroke-width="2.5"/><line x1="60" y1="38" x2="60" y2="22" stroke="#111" stroke-width="2.5"/><line x1="71" y1="41" x2="79" y2="27" stroke="#111" stroke-width="2.5"/><line x1="79" y1="49" x2="93" y2="41" stroke="#111" stroke-width="2.5"/></svg>`,
   "tree-0": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="#fff"/><rect x="54" y="42" width="12" height="62" fill="none" stroke="#111" stroke-width="4"/></svg>`,
   "tree-1": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="#fff"/><rect x="54" y="42" width="12" height="62" fill="none" stroke="#111" stroke-width="4"/><circle cx="60" cy="32" r="24" fill="none" stroke="#111" stroke-width="3"/></svg>`,
   "tree-2": `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="#fff"/><rect x="54" y="42" width="12" height="58" fill="none" stroke="#111" stroke-width="4"/><circle cx="48" cy="30" r="18" fill="none" stroke="#111" stroke-width="3"/><circle cx="72" cy="30" r="18" fill="none" stroke="#111" stroke-width="3"/></svg>`,
@@ -325,6 +325,11 @@ function adjustLogits(logits, categories, shape, target) {
   const out=Array.from(logits), idx=n=>categories.indexOf(n);
   const treeI=idx("tree"), flowerI=idx("flower"), carI=idx("car"), bicycleI=idx("bicycle"),
         cloudI=idx("cloud"), dogI=idx("dog"), catI=idx("cat"), sunI=idx("sun"), starI=idx("star");
+  // 雲：無條件給基礎 boost
+  if (cloudI>=0 && target==="cloud") {
+    out[cloudI]+=2.2;
+    if(sunI>=0)out[sunI]-=1.0; if(flowerI>=0)out[flowerI]-=0.8; if(catI>=0)out[catI]-=0.8;
+  }
   if (treeI>=0&&flowerI>=0) {
     if (target==="tree"&&shape.trunkScore>=0.30) { out[treeI]+=1.8; out[flowerI]-=1.2; }
     else if (target==="tree"&&shape.flowerLike>=0.40&&shape.trunkScore<0.25) out[flowerI]+=0.4;
@@ -340,9 +345,10 @@ function adjustLogits(logits, categories, shape, target) {
     else if (target==="cat"&&shape.catLike>=0.22&&shape.sunLike<0.35) { out[catI]+=1.8; out[dogI]-=1.4; }
     else if (target==="cat"&&shape.dogLike>=0.38) out[dogI]+=0.4;
   }
-  if (sunI>=0) {
-    if (target==="sun"&&shape.sunLike>=0.25) { out[sunI]+=2.5; if(catI>=0)out[catI]-=2.0; if(dogI>=0)out[dogI]-=0.7; if(flowerI>=0)out[flowerI]-=0.8; }
-    else if (target==="sun"&&shape.catLike>=0.30&&shape.sunLike<0.20&&catI>=0) out[catI]+=0.35;
+  if (sunI>=0&&target==="sun") {
+    const sunBoost = 1.8 + shape.sunLike * 2.0;
+    out[sunI]+=sunBoost;
+    if(catI>=0)out[catI]-=2.0; if(dogI>=0)out[dogI]-=0.7; if(flowerI>=0)out[flowerI]-=0.8;
   }
   if (starI>=0&&target==="star") {
     const single=shape.strokeCount===1?1.0:shape.strokeCount<=2?0.5:0;
@@ -350,6 +356,19 @@ function adjustLogits(logits, categories, shape, target) {
     if(sunI>=0)out[sunI]-=1.5; if(flowerI>=0)out[flowerI]-=1.0; if(catI>=0)out[catI]-=1.0;
     const houseI=idx("house"), burgerI=idx("hamburger");
     if(houseI>=0)out[houseI]-=1.2; if(burgerI>=0)out[burgerI]-=1.0;
+  }
+  // 吉他：需要有橢圓琴身 + 長頸，單一直線不應過關
+  // 用 strokeCount 和 aspect 來驗證：吉他通常高比寬大（aspect > 1.2）且需要多筆
+  const guitarI=idx("guitar");
+  if (guitarI>=0 && target==="guitar") {
+    const hasBody = shape.strokeCount >= 2;           // 至少要有琴身+琴頸兩筆
+    const isTall = shape.aspect > 1.1;                // 吉他是直立的，高>寬
+    const notTooSimple = shape.strokeCount >= 1 && (shape.vRatio??0) < 0.95; // 不能幾乎全是直線
+    if (!hasBody || !isTall) {
+      out[guitarI] -= 2.5;  // 筆跡太簡單，壓低吉他信心
+    } else {
+      out[guitarI] += 1.2;  // 符合吉他特徵，給予加成
+    }
   }
   return out;
 }
@@ -377,7 +396,7 @@ const GUESS_INTERVAL_MS = 1200;
 const WIN_THRESHOLD = 0.40;
 const HINT_AFTER_MS = 7000;
 const STROKE_MIN_FOR_HINT = 8;
-const EXCLUDED = ["bird", "airplane"];
+const EXCLUDED = ["bird", "airplane", "guitar"];
 
 const canvas = document.getElementById("draw-canvas");
 const ctx = canvas.getContext("2d");
@@ -418,10 +437,15 @@ function clearCanvas() {
   pointCount=0; strokePaths=[]; currentPath=null;
 }
 
+let recentTargets = [];
+
 function pickTarget() {
   const {categories,labels_zh:zh}=getLabels();
-  const pool=categories.filter(c=>!EXCLUDED.includes(c));
+  let pool=categories.filter(c=>!EXCLUDED.includes(c)&&!recentTargets.includes(c));
+  if (pool.length===0) pool=categories.filter(c=>!EXCLUDED.includes(c));
   const label=pool[Math.floor(Math.random()*pool.length)];
+  recentTargets.push(label);
+  if (recentTargets.length>3) recentTargets.shift();
   return {label, display:zh[label]||label};
 }
 
@@ -433,6 +457,16 @@ const START_TIPS = {
   cat: "畫貓：圓頭+尖耳朵 → 鬍鬚 → 小身體（不要畫四條粗腿）。",
   sun: "畫太陽：中等圓 + 從圓外緣畫短光芒（勿畫太長，否則 AI 會縮成一團）。",
   star: "畫星星：請用一筆連續畫完五角星（上→右下→左→右→左下→上），不要分開畫每個尖角！",
+  house: "畫房子：正方形牆壁 → 上方三角屋頂 → 中間小門。",
+  bicycle: "畫腳踏車：左右各一個大圓輪 → 三角車架連接兩輪 → 把手。",
+  apple: "畫蘋果：圓形果身 → 頂部短莖 → 小葉子。",
+  cloud: "畫雲：3～4 個重疊的圓弧連在一起，底部畫平，頂部圓潤。",
+  fish: "畫魚：橫向橢圓魚身 → 右側三角尾巴 → 點一個眼睛。",
+  umbrella: "畫雨傘：向上彎的大弧線傘面 → 中心往下直線傘柄 → J 形把手。",
+  cup: "畫杯子：U 形杯身 → 右側 C 形把手 → 杯口橢圓線。",
+  hamburger: "畫漢堡：上層半圓麵包 → 中間橫線肉排 → 下層半圓麵包。",
+  moon: "畫月亮：畫 C 形彎月（月牙），開口朝右，不要畫成圓形。",
+  pizza: "畫披薩：大三角形切片 → 內部點幾個小圓當配料。",
 };
 
 function startRound() {
@@ -464,7 +498,9 @@ function startRound() {
       const dogConfused=target==="dog"&&(ranked.find(r=>r.label==="dog")?.prob??0)<0.5&&(ranked[0]?.label==="cat"||catProb>0.2);
       const sunConfused=target==="sun"&&(ranked.find(r=>r.label==="sun")?.prob??0)<0.5&&(ranked[0]?.label==="cat"||catProb>0.18);
       const starConfused=target==="star"&&(ranked.find(r=>r.label==="star")?.prob??0)<0.45&&ranked[0]?.label!=="star";
-      const hintReady=pointCount>=STROKE_MIN_FOR_HINT&&(elapsed>=HINT_AFTER_MS||(treeConfused&&elapsed>=3500)||(flowerConfused&&elapsed>=3500)||(carConfused&&elapsed>=3500)||(dogConfused&&elapsed>=3500)||(sunConfused&&elapsed>=3500)||(starConfused&&elapsed>=3500));
+      const cloudProb=ranked.find(r=>r.label==="cloud")?.prob??0;
+      const cloudConfused=target==="cloud"&&cloudProb<0.45&&ranked[0]?.label!=="cloud";
+      const hintReady=pointCount>=STROKE_MIN_FOR_HINT&&(elapsed>=HINT_AFTER_MS||(treeConfused&&elapsed>=3500)||(flowerConfused&&elapsed>=3500)||(carConfused&&elapsed>=3500)||(dogConfused&&elapsed>=3500)||(sunConfused&&elapsed>=3500)||(starConfused&&elapsed>=3500)||(cloudConfused&&elapsed>=3500));
       if (hintReady) maybeShowHint(ranked, elapsed);
     } catch(err) { console.error(err); }
   }, GUESS_INTERVAL_MS);
